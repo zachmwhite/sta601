@@ -1,0 +1,112 @@
+---
+title: "HW 3"
+author: "Zach White"
+date: "9/13/2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(xtable)
+```
+
+### Problem 1
+## 1.b
+
+```{r,fig.width = 5, fig.height = 2}
+theta = seq(0,1,by= .1)
+probs = dbinom(57, 100, theta)
+data.bern = data.frame(cbind(theta,probs))
+data.bern
+plot = ggplot(data = data.bern, aes(x = theta, y = probs))
+plot + geom_line()
+plot + geom_point()
+```
+
+## 1.c
+```{r,fig.width = 5, fig.height = 2}
+prior = 1/11
+n = 100 
+sum.y = 57
+probs = dbinom(57, 100, theta)
+probs.prior = probs * prior
+marg.sumy = sum(probs.prior)
+post.probs = probs.prior /marg.sumy
+data.post = data.frame(cbind(theta,post.probs))
+data.post
+plot = ggplot(data = data.post, aes(x = theta, y = post.probs))
+plot + geom_line()
+plot + geom_point()
+```
+
+## 1.d
+
+```{r,fig.width = 5, fig.height = 2}
+alpha = 1
+beta = 1
+n = 100 
+sum.y = 57
+post.alpha = sum.y + alpha
+post.beta = n - sum.y + beta
+post.probs = dbeta(theta,post.alpha,post.beta)
+cbind(theta,post.probs)
+x <- seq(0, 1, len = 100)
+p <- qplot(x, geom = "blank")
+stat <- stat_function(aes(x = x, y = ..y..), fun = dbeta, colour="red"
+                      , n = 100,args = list(shape1 = post.alpha, shape2 = post.beta))
+p + stat
+```
+
+## 1.e
+```{r,fig.width = 5, fig.height = 2}
+x <- seq(0, 1, len = 100)
+p <- qplot(x, geom = "blank")
+stat <- stat_function(aes(x = x, y = ..y..), fun = dbeta, colour="red"
+                      , n = 100,args = list(shape1 = post.alpha, shape2 = post.beta))
+p + stat
+```
+
+The first two are similiar.  However, it is important to note that in the cse fothe first model. THe values aren't a complete density because we aren't sampling over all the values of $\theta$.  In the second example, since we use Baye's rule, it because a valid density, an the sum of the values sum to 1.  The third and fourth plots are the same because a uniform prior is a beta distribution with $\alpha = \beta = 1$.
+
+### Problem 2
+```{r}
+theta.vals = seq(.1,.9,by = .1)
+n.vals = c(1,2,8,16,32)
+theta.n =length(theta.vals)
+n.n = length(n.vals)
+a.data.frame = matrix(NA,n.n, theta.n)
+b.data.frame = a.data.frame
+for(i in 1:n.n){
+  for(j in 1:theta.n){
+    a.data.frame[i,j] = theta.vals[j] * n.vals[i]
+    b.data.frame[i,j] = (1-theta.vals[j]) * n.vals[i]
+  }
+}
+
+post.a = a.data.frame + sum.y
+post.b = b.data.frame + n - sum.y
+post.a
+post.b
+
+1 - pbeta(.5, post.a,post.b)
+
+
+eta = seq(.1, .9, by=.1)
+K = c(1, 2, 8, 16, 32)
+
+post.probs.50 = function(n.input,theta.input){
+  1 - pbeta(.5, theta.input*n.input + sum.y , n.input*(1-theta.input) + n - sum.y )
+}
+
+probs.post = outer(n.vals, theta.vals, post.probs.50)
+
+levels1 = seq(.1,1,by = .05)
+
+contour(n.vals, theta.vals, probs.post,
+        levels=c(levels1,.92,.93),
+        xlim = c(0,32), ylim = c(0,1),
+        xlab=expression(n[0]), ylab=expression(theta[0] ), main=expression(P({theta > .5} *"|"* {sum(Y) *"="* 57})))
+```
+
+Each of the lines shows the conditions of $n_0$ and $\theta$ to produce the given probability.  In this case, it is reasonable to assume that $\theta > .5$ since the plot is dominated by lines that of relatively high probability.  The lines represent the probability that $\theta > .5$.  It is important to note that under these conditions $\theta$ represents our prior guess of $\theta$ and $n_0$ represents our confidence in this guess.  From this plot, we can see that when we don't have a high prior confidence, the plots with a lower guess of $\theta$ don't even show up hardly.  Also, We observed $\sum Y = 57$, and so the probability .92 is actually relatively flat because it seems to start with the prior guess of $\theta \approx .55$, which is very close to our observed values. Under these conditions, it seems likely that $\theta > .5$
