@@ -1,0 +1,79 @@
+---
+title: "Homework 3"
+author: "Zach White"
+date: "9/16/2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+```
+
+### Exercise 3.3
+```{r 3.3 a}
+y.a = c(12,9,12,14,13,13,15,8,15,6)
+y.b = c(11,11,10,9,9,8,7,10,6,8,8,9,7)
+
+a.a = 120; a.b = 10
+b.a = 12 ; b.b = 1
+n.y.a = length(y.a)
+n.y.b = length(y.b)
+sumy.a = sum(y.a)
+sumy.b = sum(y.b)
+post.a.a = a.a + sumy.a
+post.a.b = n.y.a + a.b
+
+post.b.a = b.a + sumy.b
+post.b.b = n.y.b + b.b
+```
+The closed form of posterior distribution of a poisson sampling model with a gamma prior is $\theta | Y \sim Ga(a + \sum Y, b + n)$
+
+The posterior distribution of $\theta_A | Y_A \sim Ga(237,20)$, and the posterior distribution of $\theta_B | Y_B \sim Ga(125,14)$
+
+```{r }
+post.mean.a = post.a.a / post.a.b
+post.var.a = post.a.a / post.a.b ^2
+post.mean.a
+post.var.a
+qgamma(c(.025,.975), post.a.a,post.a.b)
+
+post.mean.b = post.b.b / post.b.b
+post.var.b = post.b.b / post.b.b ^2
+post.mean.b
+post.var.b
+qgamma(c(.025,.975), post.b.b,post.b.b)
+```
+The posterior mean of $\theta =$ `r post.mean.a`
+
+## Part B
+```{r }
+n0 = 1:50
+post.b.a.n = 12*n0 + sumy.b
+post.b.b.n = n.y.b + n0
+post.exp.b = post.b.a.n / post.b.b.n
+n0.plot.frame = data.frame(n0,post.exp.b)
+plot.exp = ggplot(n0.plot.frame, aes(x= n0, y = post.exp.b))
+plot.exp + geom_line() + geom_hline(yintercept = post.mean.a, color = "red")
+```
+It seems clear that $n_0$ would need to approach infinity for the posterior expectation of $\theta_B | Y_B$ to approach $E(\theta_A | Y_A)$ 
+
+## Part C
+If knowledge about population A informs us about population B, then it doesn't make sense to have a prior $p(\theta_A,\theta_B) =p(\theta_A) \times p(\theta_B)$ because that prior operates under the assumption that they are independent.  A informing B makes that assumption invalid.
+
+### Exercise 3.9
+
+```{r galenshore}
+galenshore = function(y,a,theta){
+  (2 / gamma(a)) * theta^(2*a) * y^(2*a - 1) * exp(-theta^2*y^2)
+}
+
+x = seq(0,10, by = .01)
+curve(galenshore(x,1,1), type = "l", xlim = c(0,5))
+curve(galenshore(x,1,5), add = TRUE)
+```
+
+
+### Exercise 4.1
+
+### Exercise 4.2
