@@ -68,12 +68,66 @@ galenshore = function(y,a,theta){
   (2 / gamma(a)) * theta^(2*a) * y^(2*a - 1) * exp(-theta^2*y^2)
 }
 
-x = seq(0,10, by = .01)
-curve(galenshore(x,1,1), type = "l", xlim = c(0,5))
-curve(galenshore(x,1,5), add = TRUE)
+x = seq(0,5, by = .001)
+xy.11 = galenshore(x,1,1)
+xy.15 = galenshore(x,1,5)
+xy.101 = galenshore(x,10,1)
+galen.data.frame = data.frame(cbind(x,xy.11,xy.15,xy.101))
+#curve(galenshore(x,1,1),ylim = c(0,4.5), xlim = c(0,5))
+#curve(galenshore(x,1,5), add = TRUE, col = "red")
+#curve(galenshore(x,10,5), add = TRUE, col = "blue")
+
+f = ggplot(data = galen.data.frame, aes(x = x), ylim = c(0,5))
+f + geom_line(aes(y = xy.11), color = "black") +
+  geom_line(aes(y = xy.15), color = "red") +
+  geom_line(aes(y = xy.101), color = "blue")
+ 
 ```
 
 
 ### Exercise 4.1
+``` {r exercise 4.1}
+n.2 = 50
+sum.x.2 = 30
+n.1 = 100
+sum.x.1 = 57
+alpha = 1
+beta = 1
+post.alpha.1 = sum.x.1 + alpha
+post.beta.1 = n.1 - sum.x.1 + beta
+post.alpha.2 = sum.x.2 + alpha
+post.beta.2 = n.2 - sum.x.2 + beta
+```
+In this case, we assume a uniform prior distribution, which is equivalent to $\theta_2 \sim Ga(1,1)$.  The posterior distribution of $\theta_2 | \sum X \sim Ga$ (`r post.alpha.2`,`r post.beta.2`). 
+
+``` {r exercise 4.1.b}
+theta1 = rgamma(5000, post.alpha.1, post.beta.1)
+theta2 = rgamma(5000, post.alpha.2, post.beta.2)
+
+theta.both = mean(theta2 > theta1)
+theta.both
+```
+Thus $Pr(\theta_A < \theta_B | y_A, y_B) =$ `r theta.both` in this case.
 
 ### Exercise 4.2
+
+## Part A
+Pretty Straightforward.
+``` {r exercise 4.2}
+
+```
+
+## Part B
+Sensitivity
+``` {r exercise 4.2}
+
+```
+
+## Part C
+Posterior predictive
+``` {r exercise 4.2}
+
+```
+
+
+
