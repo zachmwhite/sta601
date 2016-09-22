@@ -58,6 +58,16 @@ plot.exp + geom_line() + geom_hline(yintercept = post.mean.a, color = "red")
 ```
 It seems clear that $n_0$ would need to approach infinity for the posterior expectation of $\theta_B | Y_B$ to approach $E(\theta_A | Y_A)$ 
 
+```{r }
+n0 = 1:300
+post.b.a.n = 12*n0 + sumy.b
+post.b.b.n = n.y.b + n0
+post.exp.b = post.b.a.n / post.b.b.n
+n0.plot.frame = data.frame(n0,post.exp.b)
+plot.exp = ggplot(n0.plot.frame, aes(x= n0, y = post.exp.b))
+plot.exp + geom_line() + geom_hline(yintercept = post.mean.a, color = "red")
+```
+
 ## Part C
 If knowledge about population A informs us about population B, then it doesn't make sense to have a prior $p(\theta_A,\theta_B) =p(\theta_A) \times p(\theta_B)$ because that prior operates under the assumption that they are independent.  A informing B makes that assumption invalid.
 
@@ -114,20 +124,99 @@ Thus $Pr(\theta_A < \theta_B | y_A, y_B) =$ `r theta.both` in this case.
 ## Part A
 Pretty Straightforward.
 ``` {r exercise 4.2}
+y.a = c(12,9,12,14,13,13,15,8,15,6)
+y.b = c(11,11,10,9,9,8,7,10,6,8,8,9,7)
 
+a.a = 120; a.b = 10
+b.a = 12 ; b.b = 1
+n.y.a = length(y.a)
+n.y.b = length(y.b)
+sumy.a = sum(y.a)
+sumy.b = sum(y.b)
+post.a.a = a.a + sumy.a
+post.a.b = n.y.a + a.b
+
+post.b.a = b.a + sumy.b
+post.b.b = n.y.b + b.b
+
+theta.a.draws = rgamma(10000,post.a.a,post.a.b)
+theta.b.draws = rgamma(10000,post.b.a,post.b.b)
+
+prob.diff = mean(theta.b.draws < theta.a.draws)
 ```
+According to this, $P(\theta_B < \theta_A | y_B, y_A) =$ 'r prob.diff', which would indicate that we are quite sure that $\theta_B < \theta_A$.
 
 ## Part B
 Sensitivity
-``` {r exercise 4.2}
+``` {r exercise 4.2.B}
+n0 = seq(0,350, by = 5)
+post.b.a.n = 12*n0 + sumy.b
+post.b.b.n = n.y.b + n0
 
+post.a.a = a.a + sumy.a
+post.a.b = n.y.a + a.b
+
+theta.a.draws = rgamma(10000,post.a.a,post.a.b)
+theta.b.draws = rgamma(10000,post.b.a,post.b.b)
+
+n.iter = 10000
+# This vector is a vector of \theta_B < \theta_A | y_B, y_A for different levels of n_0
+sensitivity.analysis.n0 = rep(NA, length(n0))
+for(i in 1:length(n0)){
+  post.b.a.val = post.b.a.n[i]
+  post.b.b.val = post.b.b.n[i]
+  theta.b.draws1 = rgamma(n.iter,post.b.a.val,post.b.b.val)
+  sensitivity.analysis.n0[i] = mean(theta.b.draws1 < theta.a.draws)
+}
+
+sens.data.frame = as.data.frame(cbind(n0,sensitivity.analysis.n0))
+
+ggplot(sens.data.frame, aes(x = n0)) + geom_line(aes(y = sensitivity.analysis.n0)) +
+  geom_hline(yintercept = prob.diff,color = "red")
+plot(sensitivity.analysis.n0, type = "l")
 ```
 
-## Part C
+## Part C.A
 Posterior predictive
-``` {r exercise 4.2}
+``` {r Exercise 4.2.C.A}
 
+theta.a.draws = rgamma(10000,post.a.a,post.a.b)
+theta.b.draws = rgamma(10000,post.b.a,post.b.b)
+
+y.a.draws = rpois(10000,theta.a.draws)
+y.b.draws = rpois(10000,theta.b.draws)
+
+post.pred.diff = mean(y.b.draws < y.a.draws)
+post.pred.diff
 ```
+Through this, we find that $P(\widetilde{Y}_{B} < \widetilde{Y}_{A} | Y_A, Y_B) =$ `r post.pred.diff`.
 
+## Part C.B
+Posterior predictive
+``` {r 4.2.C.B}
+n0 = seq(0,350, by = 5)
+post.b.a.n = 12*n0 + sumy.b
+post.b.b.n = n.y.b + n0
 
+post.a.a = a.a + sumy.a
+post.a.b = n.y.a + a.b
+
+theta.a.draws = rgamma(10000,post.a.a,post.a.b)
+y.a.draws = rpois(10000,theta.a.draws)
+
+n.iter = 10000
+# This vector is a vector of \theta_B < \theta_A | y_B, y_A for different levels of n_0
+sensitivity.pred.n0 = rep(NA, length(n0))
+for(i in 1:length(n0)){
+  post.b.a.val = post.b.a.n[i]
+  post.b.b.val = post.b.b.n[i]
+  theta.b.draws1 = rgamma(n.iter,post.b.a.val,post.b.b.val)
+  y.b.draws1 = rpois(n.iter,theta.b.draws1)
+  sensitivity.pred.n0[i] = mean(y.b.draws1 < y.a.draws)
+}
+sens.pred.data.frame = as.data.frame(cbind(n0,sensitivity.pred.n0))
+
+ggplot(sens.pred.data.frame, aes(x = n0)) + geom_line(aes(y = sensitivity.pred.n0)) +
+  geom_hline(yintercept = post.pred.diff,color = "red")
+```
 
