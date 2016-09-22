@@ -44,7 +44,7 @@ post.mean.b
 post.var.b
 qgamma(c(.025,.975), post.b.b,post.b.b)
 ```
-The posterior mean of $\theta =$ `r post.mean.a`
+The posterior mean of $\theta =$ `r post.mean.a`.  The posterior variance of $\theta =$ = `r post.var.b`.
 
 ## Part B
 ```{r }
@@ -56,7 +56,7 @@ n0.plot.frame = data.frame(n0,post.exp.b)
 plot.exp = ggplot(n0.plot.frame, aes(x= n0, y = post.exp.b))
 plot.exp + geom_line() + geom_hline(yintercept = post.mean.a, color = "red")
 ```
-It seems clear that $n_0$ would need to approach infinity for the posterior expectation of $\theta_B | Y_B$ to approach $E(\theta_A | Y_A)$ 
+It seems clear that $n_0$ would need to be much greater than 50 for $\theta_B | Y_B$ to approach $E(\theta_A | Y_A)$.  Below shows the conditions for $n_0$ for $\theta_B | Y_B$ to equal $E(\theta_A | Y_A)$.  It appears as if it's around 260-275.
 
 ```{r }
 n0 = 1:300
@@ -108,21 +108,20 @@ post.beta.1 = n.1 - sum.x.1 + beta
 post.alpha.2 = sum.x.2 + alpha
 post.beta.2 = n.2 - sum.x.2 + beta
 ```
-In this case, we assume a uniform prior distribution, which is equivalent to $\theta_2 \sim Ga(1,1)$.  The posterior distribution of $\theta_2 | \sum X \sim Ga$ (`r post.alpha.2`,`r post.beta.2`). 
+In this case, we assume a uniform prior distribution, which is equivalent to $\theta_2 \sim Beta(1,1)$.  The posterior distribution of $\theta_2 | \sum X \sim Beta$(`r post.alpha.2`,`r post.beta.2`). 
 
 ``` {r exercise 4.1.b}
-theta1 = rgamma(5000, post.alpha.1, post.beta.1)
-theta2 = rgamma(5000, post.alpha.2, post.beta.2)
+theta1 = rbeta(5000, post.alpha.1, post.beta.1)
+theta2 = rbeta(5000, post.alpha.2, post.beta.2)
 
 theta.both = mean(theta2 > theta1)
 theta.both
 ```
-Thus $Pr(\theta_A < \theta_B | y_A, y_B) =$ `r theta.both` in this case.
+Thus $Pr(\theta_A < \theta_B | y_A, y_B)=$ `r theta.both` in this case.
 
 ### Exercise 4.2
 
 ## Part A
-Pretty Straightforward.
 ``` {r exercise 4.2}
 y.a = c(12,9,12,14,13,13,15,8,15,6)
 y.b = c(11,11,10,9,9,8,7,10,6,8,8,9,7)
@@ -144,10 +143,10 @@ theta.b.draws = rgamma(10000,post.b.a,post.b.b)
 
 prob.diff = mean(theta.b.draws < theta.a.draws)
 ```
-According to this, $P(\theta_B < \theta_A | y_B, y_A) =$ 'r prob.diff', which would indicate that we are quite sure that $\theta_B < \theta_A$.
+According to this, $P(\theta_B < \theta_A | y_B, y_A) =$ `r prob.diff`, which would indicate that we are quite sure that $\theta_B < \theta_A$.
 
 ## Part B
-Sensitivity
+We perform a sensitivity analysis below.
 ``` {r exercise 4.2.B}
 n0 = seq(0,350, by = 5)
 post.b.a.n = 12*n0 + sumy.b
@@ -172,14 +171,14 @@ for(i in 1:length(n0)){
 sens.data.frame = as.data.frame(cbind(n0,sensitivity.analysis.n0))
 
 ggplot(sens.data.frame, aes(x = n0)) + geom_line(aes(y = sensitivity.analysis.n0)) +
-  geom_hline(yintercept = prob.diff,color = "red")
-plot(sensitivity.analysis.n0, type = "l")
+  geom_hline(yintercept = prob.diff,color = "red") + ylab(expression(theta[B] < theta[A] *"|"* Y[A]*","*Y[B]))
 ```
+
+Thus as the prior gets stronger, we become less sure that $P(\theta_B < \theta_A | y_B, y_A)$.  
 
 ## Part C.A
 Posterior predictive
 ``` {r Exercise 4.2.C.A}
-
 theta.a.draws = rgamma(10000,post.a.a,post.a.b)
 theta.b.draws = rgamma(10000,post.b.a,post.b.b)
 
@@ -217,6 +216,7 @@ for(i in 1:length(n0)){
 sens.pred.data.frame = as.data.frame(cbind(n0,sensitivity.pred.n0))
 
 ggplot(sens.pred.data.frame, aes(x = n0)) + geom_line(aes(y = sensitivity.pred.n0)) +
-  geom_hline(yintercept = post.pred.diff,color = "red")
+  geom_hline(yintercept = post.pred.diff,color = "red") + labs(y = expression(y[B] < y[A]*"|"*Y[B]*","*Y[A]))
 ```
+This plot resembles the shape of the previous, except we are less sure with a weaker prior to begin with.  It also declines a little bit more rapidly, and it seems like there is more fluctuation and perhaps uncertainty in this case.  So instead of it approaching .5, it actually dips past it really pretty early with a prior sample size of 50.
 
