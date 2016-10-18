@@ -1,0 +1,126 @@
+---
+title: "Lab 4"
+author: "Victor Obinero"
+date: "9/26/16"
+output: oilabs::lab_report
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(oilabs)
+set.seed(9.26)
+data(ames)
+```
+
+* * *
+
+### Exercise 1: 
+This data is very Right skewed based on the appearance of the histogram. This is also based on the fact that, despite having a range of 334-5642, the mean is still at the lower end of the data at 1499.67 and is larger than the median. The spread of the data is best estimated by the IQR which is 616.75. Additionally the third quartile seems to be far larger than the rest. the thrid quartile is at 1742.72 meaning that a huge section of the range is occupied by only 25% of the data.
+```{r}
+qplot(data = ames, x = area, binwidth = 250, geom = "histogram")
+
+ames %>% 
+   summarise(mu = mean(area), pop_med = median(area), sigma = sd(area), pop_iqr = IQR(area), pop_min = min(area), pop_max = max(area), pop_q1 = quantile(area, 0.25), pop_q3 = quantile(area, 0.75))
+```
+
+### Exercise 2: 
+The destribution for the sample1 data is  right skewed much like the pupulation distribution, but unlike the population data, it is bimodal. The spread of this data is lower than that of the population with a range of only 605-2704 and an IQR of 577.25 .
+```{r}
+sample1 <- ames %>% 
+ sample_n(50)
+
+qplot(data = sample1, x = area, binwidth = 250, geom = "histogram")
+
+ sample1 %>% 
+  summarise(xbar1 = mean(area), sample1_med = median(area), sample1_sd = sd(area), sample1_iqr = IQR(area), sample1_min = min(area), sample1_max = max(area), sample1_q1 = quantile(area, 0.25), sample1_q3 = quantile(area, 0.75))
+```
+
+### Exercise 3: 
+I woudln't not expect my mean to be exactly the same as another person's sample because the randomness of the selection from the population will yield different answers. I do expect the means will be relativly close to one another because the odds of selecting any particular house would be the same for everyone simply because we are all selecting from the same set of  data. 
+```{r}
+
+```
+
+### Exercise 4: 
+The two samples have relativly similar means as expected. I would predict that if i took a sample of 100 and one of 1000, the one with 1000 data points would be a more accurate estimation of the actual popultion mean
+```{r}
+ sample2 <- ames %>%
+ sample_n(50)
+
+sample2 %>% 
+   summarise(xbar2 = mean(area), sample2_med = median(area), sample2_sd = sd(area), sample2_iqr = IQR(area), sample2_min = min(area), sample2_max = max(area), sample2_q1 = quantile(area, 0.25), sample2_q3 = quantile(area, 0.75))
+```
+
+### Exercise 5: 
+there are 15000 objects in sample_means50. the sample is unimodal and relativly symmertical, and so the best measure of center would be the mean which is 1499.929. The best measure of spread would be the range which is 1250.52-1801.76. The mean and the median are very close at 1499 and 1497 respectivly. 
+```{r}
+sample_means50 <- ames %>% 
+  rep_sample_n(size = 50, reps = 15000, replace = TRUE) %>%
+  summarise(x_bar = mean(area))
+
+qplot(data = sample_means50, x = x_bar, binwidth = 30)
+
+ sample_means50 %>%
+  summarise(Sampling_mean = mean(x_bar), sampling_median = median(x_bar), sampling_min = min(x_bar), sampling_max = max(x_bar))
+```
+
+### Exercise 6: 
+There are 25 observations in the object called sample_means_small. Each observation represents the mean of a reandom sample of 10 perchased homes from the Ames data. 
+```{r}
+ sample_means_small <- ames %>%
+ rep_sample_n(size = 10, reps = 25, replace = TRUE) %>% 
+ summarise(x_barsmall = mean(area))
+ 
+sample_means_small
+
+```
+
+### Exercise 7: 
+each observation on the sampling distribution in the lab protocol represents the mean area of a random sample of 10, 50, and 100 homes depending on the chosen sample size. As the sample size is increased, the mean stays relativly constant, only changing by about 2 between a sample size of 10 and one of 100. the standard error, however, drastically decreases as sample size increases. It therefore makes sense that the shape of the histogram becomes much narrower and taller when the sample size increases, because much more data is concentrated toward the center. As for the number of simulations, we observed that as this number increased the sampling means moved farther from the population mean both in the possitive and negative direction (more variable). The standard error underwent similar changes but there was a general trend of increased standard error with a higher number of samples.For the histogram, as the number of samples increased, the histogram became more unimodal and more symetrical. 
+```{r}
+
+```
+### Exercise 8: 
+based on this sample of 15 homes, the best point estimate for the price of the average home would be $179,266.
+```{r}
+ames %>%
+ sample_n(size = 15) %>%
+ summarise(mean_price = mean(price))
+```
+
+### Exercise 9: 
+This data distribution is fairly normal but slightly right skewed with a mean slightly greater than the median. the mean would be the best measure of center in this case at 180415.2. based on this data, this would be our best estimate of the actual population mean because the mean of the sampling distribution tends to be very close to the population mean according to the Central Limit Theorem. the min and max would be the best measuresof spread at 122985 and 268012 respectivly. The actual population mean price is $180796.1
+```{r}
+sample_means15 <- ames %>%
+ rep_sample_n(size = 15, reps = 2000, replace = TRUE) %>% 
+ summarise(xbar_price = mean(price))
+
+qplot(data = sample_means15, x = xbar_price, geom = "histogram")
+
+sample_means15 %>%
+ summarise(mean15 = mean(xbar_price), median15 = median(xbar_price), iqr15 = IQR(xbar_price), min15 = min(xbar_price), max15 = max(xbar_price), q1_15 = quantile(xbar_price, 0.25), q3_15 = quantile(xbar_price, 0.75))
+
+ ames %>%
+ summarise(pop_mean_price = mean(price))
+```
+
+
+### Exercise 10: 
+This data distribution is slightly left skewed with a mean a that is a bit lower than the median. However, the destribution is still fairly symetrical so the best measure of center would be the mean at 181010 and the best measure of spread would be the range at 161483-203292. compared to the data from sample_mean15, this distribution has much less spread because the range is much narrower. the two distributions seem to be centered around the same value. Based on this sample, i would guess the mean sale price to be $181010
+
+```{r}
+sample_means150 <- ames %>%
+      rep_sample_n(size = 150, reps = 2000, replace = TRUE) %>% 
+      summarise(xbar_price = mean(price))
+
+sample_means150 %>%
+ summarise(mean150 = mean(xbar_price), median150 = median(xbar_price), iqr150 = IQR(xbar_price), min150 = min(xbar_price), max150 = max(xbar_price), q1_150 = quantile(xbar_price, 0.25), q3_150 = quantile(xbar_price, 0.75))
+
+qplot(data = sample_means150, x = xbar_price, geom = "histogram")
+
+```
+
+### Exercise 11
+the distribution using a sample size of 150 has the smaller spread. if we were concerned with getting the true value with our estimate, the samples of 150 would be better to use because the data is more concentrated around the center.

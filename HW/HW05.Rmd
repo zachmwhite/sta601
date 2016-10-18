@@ -1,0 +1,63 @@
+---
+title: "HW5"
+author: "Zach White"
+date: "10/14/2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+```
+
+# Exercise 5.2
+```{r}
+n.a = 16 ; n.b = 16;
+k.0 = 2^seq(0,5,by = 1)
+nu.0 = 2^seq(0,5,by = 1)
+
+mu.0 = 75
+sigma2.0 = 100
+
+y.bar.a = 75.2 ; s.a = 7.3
+y.bar.b = 77.5 ; s.b = 8.1
+
+kappa.n.a = k.0 + n.a ; kappa.n.b = k.0 + n.b
+mu.n.a = (k.0*mu.0 + n.a*y.bar.a) / kappa.n.a ; mu.n.b = (k.0*mu.0 + n.b*y.bar.b) / kappa.n.b
+nu.n.a = nu.0 + n.a; nu.n.b = nu.0 + n.b
+sigma2.n.a = (1/nu.n.a)*(nu.0*sigma2.0 + (n.a-1)*s.a^2 + ((k.0*n.a)/(kappa.n.a))*(y.bar.a-mu.0)^2)
+sigma2.n.b = (1/nu.n.b)*(nu.0*sigma2.0 + (n.b-1)*s.b^2 + ((k.0*n.b)/kappa.n.b) * (y.bar.b-mu.0)^2)
+
+rounds = length(k.0)
+theta.a.draws.mat = matrix(NA,50000,rounds)
+theta.b.draws.mat = matrix(NA,50000,rounds)
+prob.a.b = rep(NA,6) 
+
+for(i in 1:rounds){
+  s2a.post.samp = 1/rgamma(50000,nu.n.a/2, sigma2.n.a*nu.n.a/2)
+  s2b.post.samp = 1/rgamma(50000,nu.n.b/2, sigma2.n.b*nu.n.b/2)
+  theta.a.draws.mat[,i] = rnorm(50000,mu.n.a[i], sqrt(s2a.post.samp / kappa.n.a[i]))
+  theta.b.draws.mat[,i] = rnorm(50000,mu.n.b[i], sqrt(s2b.post.samp) / kappa.n.b[i])
+  prob.a.b[i] = mean(theta.a.draws.mat[,i] < theta.b.draws.mat[,i])
+}
+
+theta.diff = theta.b.draws.mat - theta.a.draws.mat
+colMeans(theta.diff > 0)
+
+plot(k.0,prob.a.b, type = "b", xlab = expression(kappa[0] == nu[0]), ylab = expression(theta[A] < theta[B] *"|"* y[A]*","*y[B]))
+```
+
+It is clear looking at this plot that as $(\kappa_0,\nu_0)$ increase, the $Pr(\theta_A < \theta_B | y_A, y_B)$ decreases also.  
+
+# Exercise 5.3
+
+# Exercise 6.2
+```{r}
+glucose = scan("glucose.dat")
+```
+
+## Part A
+```{r}
+ggplot(data = as.data.frame(glucose), aes(x = glucose)) + geom_density() + geom_histogram(aes(y = ..density..))
+
+```
