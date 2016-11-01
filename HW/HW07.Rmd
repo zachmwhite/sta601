@@ -1,0 +1,130 @@
+---
+title: "HW07"
+author: "Zach White"
+date: "10/28/2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(MCMCpack)
+library(MASS)
+library(reshape2)
+```
+
+# Exercise 7.3
+
+## Part A
+```{r, cache = TRUE}
+blue = read.table("~/sta601/HW/bluecrab.dat")
+orange = read.table("~/sta601/HW/orangecrab.dat")
+L.b.0 = S.b.0 = cov(blue)
+L.o.0 = S.o.0 = cov(orange)
+mu.b.0 = ybar.b = apply(blue,2,mean)
+mu.o.0 = ybar.o = apply(orange,2,mean)
+
+L.b.0.inv = S.b.0.inv = solve(L.b.0)
+L.o.0.inv = S.o.0.inv = solve(L.o.0)
+
+ybar.b = apply(blue,2,mean)
+ybar.o = apply(orange,2,mean)
+Sigma.b = cov(blue)
+Sigma.o = cov(orange)
+Sigma.b.inv = solve(Sigma.b)
+Sigma.o.inv = solve(Sigma.o)
+
+n.b = nrow(blue)
+n.o = nrow(orange)
+nu.0 = 4
+
+n.iter = 10000
+
+theta.b.post = theta.o.post = NULL
+Sigma.b.post = Sigma.o.post = NULL
+
+
+
+
+for(i in 1:n.iter){
+  ### Update theta.b, theta.o
+  Ln.b = solve(S.b.0.inv + n.b* Sigma.b.inv)
+  Ln.o = solve(S.o.0.inv + n.o * Sigma.o.inv)
+  mu.n.b = Ln.b %*% (L.b.0.inv %*% mu.b.0 + n.b*Sigma.b.inv %*% ybar.b)
+  mu.n.o = Ln.o %*% (L.o.0.inv %*% mu.o.0 + n.o*Sigma.o.inv %*% ybar.o)
+  theta.b = mvrnorm(1,mu.n.b,Ln.b)
+  theta.o = mvrnorm(1,mu.n.o,Ln.o)
+  
+  theta.b.post = rbind(theta.b.post,theta.b)
+  theta.o.post = rbind(theta.o.post,theta.o)
+  
+  ### Update Sigma.b, Sigma.o
+  Sn.b = S.b.0 + (t(blue) - c(theta.b)) %*% t(t(blue) - c(theta.b))
+  Sn.o = S.o.0 + (t(orange) - c(theta.o)) %*% t(t(orange) - c(theta.o))
+  Sigma.b = solve(rWishart(1,nu.0 + n.b, solve(Sn.b))[,,1])
+  Sigma.o = solve(rWishart(1,nu.0 + n.o, solve(Sn.o))[,,1])
+  Sigma.b.post = rbind(Sigma.b.post,c(Sigma.b))
+  Sigma.o.post = rbind(Sigma.o.post,c(Sigma.o))
+}
+```
+
+## Part B
+```{r, cache = TRUE}
+theta.b.post = as.data.frame(theta.b.post)
+names(theta.b.post) = c("theta1","theta2")
+
+theta.o.post = as.data.frame(theta.o.post)
+names(theta.o.post) = c("theta1","theta2")
+
+par(mfrow = c(3,1))
+plot(theta.b.post[,1], type = "l")
+plot(theta.b.post[,2], type = "l")
+plot(Sigma.b.post[,2] / sqrt(Sigma.b.post[,1]*Sigma.b.post[,4]), type = "l")
+
+par(mfrow = c(3,1))
+plot(theta.o.post[,1], type = "l")
+plot(theta.o.post[,2], type = "l")
+plot(Sigma.o.post[,2] / sqrt(Sigma.o.post[,1]*Sigma.o.post[,4]), type = "l")
+
+
+both.theta.post = cbind(theta.b.post, theta.o.post)
+id = rownames(both.theta.post)
+both.theta.post = cbind(id,both.theta.post)
+names(both.theta.post) = c("id","b.theta1","b.theta2","o.theta1","o.theta2")
+both.theta.post = as.data.frame(both.theta.post)
+
+par(mfrow = c(1,1))
+ggplot(data = both.theta.post,aes(x = NULL,y = NULL))
+
+ggplot(data = theta.b.post, aes(x = theta1, y = theta2)) + geom_point(color = "blue") + geom_point(data = theta.o.post, aes(x = theta1,y = theta2), color = "orange")
+
+```
+
+## Part C
+```{r}
+p.b = Sigma.b.post[,2] / sqrt(Sigma.b.post[,1] * Sigma.b.post[,4])
+p.o = Sigma.o.post[,2] / sqrt(Sigma.o.post[,1]*Sigma.o.post[,4])
+
+ggplot(data = as.data.frame(p.b) , aes(x = p.b)) + geom_density(color = "blue") + geom_density(data = as.data.frame(p.o), aes(x = p.o), color = "orange")
+
+mean(p.b < p.o)
+```
+
+
+# Exercise 7.5
+```{r}
+inter.exp = read.table("~/sta601/HW/interexp.dat", header = TRUE)
+
+
+```
+
+# Exercise 8.2
+```{r}
+n.a = n.b = 16
+y.bar.a = 75.2
+s.a = 7.3
+y.bar.b = 77.5
+s.b = 8.1
+
+```
+
