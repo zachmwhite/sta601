@@ -16,9 +16,9 @@ library(reshape2)
 # Exercise 7.3
 
 ## Part A
-```{r, cache = TRUE}
-blue = read.table("~/sta601/HW/bluecrab.dat")
-orange = read.table("~/sta601/HW/orangecrab.dat")
+```{r, cache = TRUE, warning = FALSE}
+blue = read.table("/home/grad/zmw5/Fall 2016/STA 601/sta601/HW/bluecrab.dat")
+orange = read.table("/home/grad/zmw5/Fall 2016/STA 601/sta601/HW/orangecrab.dat")
 L.b.0 = S.b.0 = cov(blue)
 L.o.0 = S.o.0 = cov(orange)
 mu.b.0 = ybar.b = apply(blue,2,mean)
@@ -69,7 +69,7 @@ for(i in 1:n.iter){
 ```
 
 ## Part B
-```{r, cache = TRUE}
+```{r, cache = TRUE, warning = FALSE}
 theta.b.post = as.data.frame(theta.b.post)
 names(theta.b.post) = c("theta1","theta2")
 
@@ -94,8 +94,6 @@ names(both.theta.post) = c("id","b.theta1","b.theta2","o.theta1","o.theta2")
 both.theta.post = as.data.frame(both.theta.post)
 
 par(mfrow = c(1,1))
-ggplot(data = both.theta.post,aes(x = NULL,y = NULL))
-
 ggplot(data = theta.b.post, aes(x = theta1, y = theta2)) + geom_point(color = "blue") + geom_point(data = theta.o.post, aes(x = theta1,y = theta2), color = "orange")
 
 ```
@@ -112,19 +110,203 @@ mean(p.b < p.o)
 
 
 # Exercise 7.5
+## Part A
 ```{r}
-inter.exp = read.table("~/sta601/HW/interexp.dat", header = TRUE)
-
-
+inter.exp = read.table("/home/grad/zmw5/Fall 2016/STA 601/sta601/HW/interexp.dat", header = TRUE)
+apply(inter.exp,2,mean)
+theta = sapply(inter.exp,mean,na.rm = TRUE)
+thetaA = theta[1]
+thetaB = theta[2]
+## Calculate Sigma
+sapply(inter.exp,var)
+sigma2 = sapply(inter.exp,var,na.rm = TRUE)
+sigma2.A = sigma2[1]
+sigma2.B = sigma2[2]
+## Calculate correlation matrix
+complete.rho = cor(inter.exp, use = "complete")
+rho = complete.rho[1,2]
 ```
 
-# Exercise 8.2
+## Part B
 ```{r}
+A.missingB = inter.exp[is.na(inter.exp[,2]),1]
+B.missingA = inter.exp[is.na(inter.exp[,1]),2]
+
+impute.B = thetaB + (A.missingB - thetaA)* rho *sqrt(sigma2.B / sigma2.A)
+impute.A = thetaA + (B.missingA - thetaB) * rho * sqrt(sigma2.A / sigma2.B)
+
+imp.data = inter.exp
+imp.data[is.na(imp.data[,2]),2] = impute.B
+imp.data[is.na(imp.data[,1]),1] = impute.A
+
+t.results = t.test(imp.data[,1],imp.data[,2], paired = TRUE)
+t.results$conf.int
+```
+
+## Part C
+I will use the unit information prior 
+```{r, cache = TRUE}
+ybar = apply(inter.exp,2,mean,na.rm = TRUE)
+complete = which(complete.cases(inter.exp))
+## Prior on Sigma
+S = (t(inter.exp[complete,]) - ybar) %*% t(t(inter.exp[complete,]) - ybar)/length(complete)
+nu.0 = nrow(S) + 2
+n = nrow(inter.exp)
+
+n.iter = 10000
+
+y.A.samps = y.B.samps = matrix(0, nrow = n.iter,ncol = n)
+theta.post = matrix(0,nrow=n.iter, ncol = 2)
+names(theta.post) = c("thetaA","thetaB")
+
+#STarting values
+Y = imp.data
+Sigma = S
+theta = ybar
+
+miss.A = which(is.na(inter.exp$yA))
+miss.B = which(is.na(inter.exp$yA))
+
+for(i in 1:n.iter){
+  # Update theta
+  y.bar.samp = apply(Y,2,mean)
+  theta = mvrnorm(1,y.bar.samp,Sigma / (n+1))
+  theta.post[i, ] <- theta
+  
+  # Update Sigma
+  Sn<- S + ( t(Y)-c(theta) )%*%t( t(Y)-c(theta) )
+  Sigma<-solve(rWishart(1, nu.0+n, solve(Sn))[, , 1])
+  sigma2.A <- Sigma[1, 1]
+  sigma2.B <- Sigma[2, 2]
+  rho <- Sigma[1,2] / sqrt(sigma2.A*sigma2.B)
+  
+  for (j in miss.A) {
+    Y[j, 1] <- rnorm(1, 
+                     theta[1] + (rho*sqrt(sigma2.A/sigma2.B))*(Y[j, "yB"] - theta[2]),
+                     sqrt4(sigma2.A*(1 - rho)))
+  }
+  for (j in miss.B) {
+    Y[j, 2] <- rnorm(1, 
+                     theta[2] + (rho*sqrt(sigma2.B/sigma2.A))*(Y[j, "yA"] - theta[1]),
+                     sqrt(sigma2.B*(1 - rho)))
+  }
+  
+  
+  #Y[miss.A,1] = rnorm(length(miss.A),(rho*sqrt(sigma2.A/sigma2.B))*(Y[miss.A,"yB"] - theta[2]),sqrt(sigma2.A*(1-rho)))
+  #Y[miss.B,2] = rnorm(length(miss.B),(rho*sqrt(sigma2.B/sigma2.A))*(Y[miss.B,"yA"] - theta[1]), sqrt(sigma2.B*(1-rho)))
+  
+  y.A.samps[i, ] <- Y[, 1]
+  y.B.samps[i, ] <- Y[, 2]
+}
+
+theta.diff = theta.post[,1] - theta.post[,2] 
+cred.int = quantile(theta.diff, c(.025,.975))
+cred.int
+```
+
+The credible interval of interest is `r cred.int`, which means that there is a .95 probability that $\theta_A-\theta_B | y$ lies in th interval `r cred.int`.  When comparing this result with the results from the t test, ours are a little bit wider.  Our lower extreme is lower than the one from the traditional t test.  However, we now have significantly more information with our analysis because we have posteriors on $\Sigma, \theta_A,\theta_B$ and finally we actually have distributions on the imputed values.
+
+# Exercise 8.2
+
+$$
+\begin{aligned}
+\mu &\sim N(\mu_0,\gamma_o^2) = N(75,100) \\
+\ \frac{1}{\sigma^2} &\sim Gamma(\eta_0,\tau_0^2) = Gamma(1,100) \\
+\ \delta &\sim N(\delta_0,\tau_0^2) \text{ where} \\
+\delta_0 &\in \{-4,-2,0,2,4\} \text{ & } \tau_0^2 \in \{10,50,100,500\}
+
+\end{aligned}
+$$
+
+## Part A
+```{r, cache = TRUE}
 n.a = n.b = 16
 y.bar.a = 75.2
 s.a = 7.3
 y.bar.b = 77.5
 s.b = 8.1
+sum.y.a = n.a * y.bar.a
+sum.y.b = n.b * y.bar.b
 
+delta0 = seq(-4,4,by = 2)
+tau2.0 = c(10,50,100,500)
+
+
+
+# Hyperparams
+mu.0 = 75
+gamma2.0 = 100
+nu.0 = 1
+sigma2.0 = 100
+
+
+# Starting values
+mu = (y.bar.a + y.bar.b )/2
+delta = (y.bar.a - y.bar.b) / 2
+
+# Form some arays to store values
+
+mu.array =sigma2.array = delta.array =  array(0,c(length(delta0),length(tau2.0),n.iter))
+
+  
+## Gibbs Sampler
+n.iter = 10000
+for(i in 1:n.iter){
+  for(j in 1:length(delta0)){
+    for(k in 1:length(tau2.0)){
+  
+      # Update Sigma2
+      nu.sigma = (nu.0*sigma2.0 + (n.a -1)*s.a^2 + n.a*(y.bar.a - (mu + delta))^2 + (n.b-1)*s.b^2 + n.b*(y.bar.b - (mu-delta))^2)
+      sigma2 = 1 / rgamma(1,(nu.0 + n.a + n.b)/2,nu.sigma)
+      sigma2.array[j,k,i] = sigma2
+      
+      ## Update mu
+      var.mu = 1/(1/gamma2.0 + (n.a + n.b)/sigma2)
+      mean.mu = var.mu * (mu.0 / gamma2.0 +  ((sum.y.a - n.a*mu)/sigma2) + ((sum.y.b + n.b*mu)/sigma2))
+      mu = rnorm(1,mean.mu,sqrt(var.mu))
+      mu.array[j,k,i] = mu
+      
+      ## Update delta
+      var.delta = 1/(1/tau2.0[k] + (n.a + n.b)/sigma2)
+      mean.delta = var.delta*(delta0[j]/tau2.0[k] + ((sum.y.a - n.a*mu)/sigma2) - (sum.y.b - n.b*mu)/sigma2)
+      delta = rnorm(1,mean.delta,sqrt(var.delta))
+      delta.array[j,k,i] = delta
+    }
+  }
+}
+
+## Post Analysis
+#sapply(delta.array,c(1,2), mean < 0)
+prob.0 = lower.bound = upper.bound = post.cor = matrix(0,5,4)
+delta.n = length(delta0)
+tau.n = length(tau2.0)
+theta.A = mu.array + delta.array
+theta.B = mu.array - delta.array
+for(i in 1:delta.n){
+  for(j in 1:tau.n){
+    prob.0[i,j] = mean(delta.array[i,j,] < 0)
+    lower.bound[i,j] = quantile(delta.array[i,j,],.025)
+    upper.bound[i,j] = quantile(delta.array[i,j,],.975)
+    post.cor[i,j] = cor(theta.A[i,j,],theta.B[i,j,])
+  }
+}
+prob.0
+apply(delta.array,c(1,2),quantile,c(.025,.975))
+apply(delta.array,c(1,2),quantile,.025)
+apply(delta.array,c(1,2),quantile,.975)
 ```
+
+This matrix shows `r prob.0` for the varying combinations of the prior specifications for $\delta_0$ and $\tau_0^2$.
+
+```{r}
+lower.bound
+upper.bound
+```
+
+```{r}
+theta.A = mu.array + delta.array
+theta.B = mu.array - delta.array
+```
+
+## Part B
 
