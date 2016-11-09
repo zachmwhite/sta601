@@ -107,14 +107,16 @@ ggplot(data = as.data.frame(p.b) , aes(x = p.b)) + geom_density(color = "blue") 
 
 mean(p.b < p.o)
 ```
-
+We can be pretty sure that $\rho_b < \rho_0$, since `r mean(p.b<p.o)` is pretty high.
 
 # Exercise 7.5
+
 ## Part A
 ```{r}
 inter.exp = read.table("/home/grad/zmw5/Fall 2016/STA 601/sta601/HW/interexp.dat", header = TRUE)
 apply(inter.exp,2,mean)
 theta = sapply(inter.exp,mean,na.rm = TRUE)
+theta
 thetaA = theta[1]
 thetaB = theta[2]
 ## Calculate Sigma
@@ -122,9 +124,11 @@ sapply(inter.exp,var)
 sigma2 = sapply(inter.exp,var,na.rm = TRUE)
 sigma2.A = sigma2[1]
 sigma2.B = sigma2[2]
+sigma2
 ## Calculate correlation matrix
 complete.rho = cor(inter.exp, use = "complete")
 rho = complete.rho[1,2]
+rho
 ```
 
 ## Part B
@@ -183,7 +187,7 @@ for(i in 1:n.iter){
   for (j in miss.A) {
     Y[j, 1] <- rnorm(1, 
                      theta[1] + (rho*sqrt(sigma2.A/sigma2.B))*(Y[j, "yB"] - theta[2]),
-                     sqrt4(sigma2.A*(1 - rho)))
+                     sqrt(sigma2.A*(1 - rho)))
   }
   for (j in miss.B) {
     Y[j, 2] <- rnorm(1, 
@@ -211,12 +215,12 @@ The credible interval of interest is `r cred.int`, which means that there is a .
 $$
 \begin{aligned}
 \mu &\sim N(\mu_0,\gamma_o^2) = N(75,100) \\
-\ \frac{1}{\sigma^2} &\sim Gamma(\eta_0,\tau_0^2) = Gamma(1,100) \\
-\ \delta &\sim N(\delta_0,\tau_0^2) \text{ where} \\
-\delta_0 &\in \{-4,-2,0,2,4\} \text{ & } \tau_0^2 \in \{10,50,100,500\}
-
+\frac{1}{\sigma^2} &\sim Gamma(\eta_0,\tau_0^2) = Gamma(1,100) \\
+\delta &\sim N(\delta_0,\tau_0^2) \\
 \end{aligned}
 $$
+
+We perform this analysis with varying levels of $\delta_0$ and $\tau_0^2$.  The levels are as follows $\delta_0 \in \{-4,-2,0,2,4\}$ and $\tau_0^2 \in \{10,50,100,500\}$
 
 ## Part A
 ```{r, cache = TRUE}
@@ -277,7 +281,7 @@ for(i in 1:n.iter){
 
 ## Post Analysis
 #sapply(delta.array,c(1,2), mean < 0)
-prob.0 = lower.bound = upper.bound = post.cor = matrix(0,5,4)
+prob.0 = lower.bound = upper.bound = post.cor = prior.cor= matrix(0,5,4)
 delta.n = length(delta0)
 tau.n = length(tau2.0)
 theta.A = mu.array + delta.array
@@ -288,6 +292,7 @@ for(i in 1:delta.n){
     lower.bound[i,j] = quantile(delta.array[i,j,],.025)
     upper.bound[i,j] = quantile(delta.array[i,j,],.975)
     post.cor[i,j] = cor(theta.A[i,j,],theta.B[i,j,])
+    prior.cor[i,j]= (gamma2.0 - tau2.0[j]) / (gamma2.0 + tau2.0[j])
   }
 }
 prob.0
@@ -296,17 +301,20 @@ apply(delta.array,c(1,2),quantile,.025)
 apply(delta.array,c(1,2),quantile,.975)
 ```
 
-This matrix shows `r prob.0` for the varying combinations of the prior specifications for $\delta_0$ and $\tau_0^2$.
+This matrices above shows the lower and upper bounds for credible intervals on $\delta$ for the varying combinations of the prior specifications for $\delta_0$ and $\tau_0^2$.
 
 ```{r}
 lower.bound
 upper.bound
 ```
+The two matrices above shows the posterior credible intervals on $\delta$ for each of the combinations of the prior values.
 
 ```{r}
-theta.A = mu.array + delta.array
-theta.B = mu.array - delta.array
+prior.cor
+post.cor
 ```
 
-## Part B
+The above shows the prior correlations along with the posterior correlations.
 
+## Part B
+It's clear that for the most part that for each prior choice, we have a $p(\delta|y) < 0$ is greater than .5.  However, we can see that when we have a highly positive $\delta_0$ with a low $\tau_0^2$, then the probability is greatly diminished.  However, for most priors, there is a good chance that $p(\delta|y) < 0$, and so we can speak and say that unless the prior is strong and negative, then we can be pretty sure that is the case.  Thus even, if they are very certain that $\delta > 0$, then they should consider the evidence that this analysis brings because the only one where this probability is less than .5, is a strong positive $\delta_0$ with a very low prior uncertainty or low $\tau_0^2$
