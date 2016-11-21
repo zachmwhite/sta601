@@ -1,0 +1,169 @@
+---
+title: "HW09"
+author: "Zach White"
+date: "11/19/2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(MASS)
+library(dplyr)
+```
+
+# Exercise 9.2
+
+## Part A
+```{r, cache = TRUE}
+setwd("~/Fall 2016/STA 601/sta601/HW/HW09")
+diab = read.table("azdiabetes.dat", header = TRUE)
+
+# Fit a regression model using g-prior
+g = n = nrow(diab)
+nu.0 = 2
+sigma2.0 = 1
+nreps = 10000
+
+y = diab$glu
+X = as.matrix(diab[,-c(2,8)])
+X = cbind(1,X)
+p = ncol(X)
+
+Hg = (g / (g+1)) * X %*% solve(t(X) %*% X) %*% t(X) 
+SSRg = t(y) %*% ( diag(1,n) - Hg ) %*% y
+
+s2 = 1 / rgamma(nreps,(nu.0 + n)/2, (nu.0 *sigma2.0 + SSRg)/2 )
+
+Vb =( g/(g+1)) * solve(t(X) %*% X)
+Eb = Vb %*% t(X) %*% y
+
+E = matrix(rnorm(nreps * p, 0 , sqrt(s2)),nreps,p)
+beta = t( t(E %*% chol(Vb)) + c(Eb))
+colnames(beta)[1] = "intercept"
+
+apply(beta,2,quantile,c(.025,.975))
+```
+
+The above shows a $95\%$ posterior credible intervals for $\beta_i$ where $i = 1,...,7$. The first thing that I notice is that that the variables where the credible interval doesn't contain zero are intercept, bmi, ped, and age, which indicates that these might be the most influential variables. 
+
+## Part B
+```{r}
+g = n = nrow(diab)
+nu.0 = 2
+sigma2.0 = 1
+nreps = 10000
+
+y = diab$glu
+X = as.matrix(diab[,-c(2,8)])
+X = cbind(1,X)
+p = ncol(X)
+
+## Model selection and averaging procedure
+lpy.X = function(y,X,g = length(y),nu.0 = 1, s20 = try(summary(lm(y~-1+X))$sigma^2, silent = TRUE) ){
+  n = nrow(X)
+  p = ncol(X)
+  if(p == 0){ 
+    Hg = 0
+    s20 = mean(y^2)
+  }
+  if(p > 0){
+    Hg = (g / (g+1)) * X %*% solve(t(X) %*% X) %*% t(X)
+  }
+  SSRg = t(y) %*% ( diag(1,n) - Hg ) %*% y
+  
+  -.5 * (n*log(pi) + p*log(1+g) + (nu.0 + n) * log(nu.0 * s20 + SSRg) - nu.0 * log(nu.0*s20)) + lgamma((nu.0 + n) / 2) - lgamma(nu.0/2) 
+}
+
+z = rep(1,p)
+lpy.c = lpy.X(y,X[,z == 1, drop = FALSE])
+nreps = 10000
+Z = matrix(0,nreps,p)
+
+beta = matrix(0,nreps,p)
+
+## Gibbs step
+for(i in 1:nreps){
+  for(j in sample(1:p)){
+    zp = z
+    zp[j] = 1 - zp[j]
+    lpy.p = lpy.X(y,X[,zp == 1, drop = FALSE])
+    r = (lpy.p - lpy.c) * (-1)^(zp[j] == 0)
+    z[j] = rbinom(1,1,1/(1+exp(-r)))
+    if(z[j] == zp[j]){
+      lpy.c = lpy.p
+    }
+  }
+  Z[i,] = z
+  Xz = X[,as.logical(Z[i,])]
+  p = ncol(Xz)
+  
+  Hg = (g / (g+1)) * Xz %*% solve(t(Xz) %*% Xz) %*% t(Xz) 
+  SSRg = t(y) %*% ( diag(1,n) - Hg ) %*% y
+  
+  s2 = 1 / rgamma(1,(nu.0 + n)/2, (nu.0 *sigma2.0 + SSRg)/2 )
+  Vb = (g / (g+1)) * solve(t(Xz) %*% Xz)
+  Eb = Vb %*% t(Xz) %*% y
+  
+  E = rnorm(p, 0, sqrt(s2))
+  beta[i,Z[i,] == 1] = t( t(E %*%chol(Vb)) + c(Eb)) 
+}
+
+
+#Vb =( g/(g+1)) * solve(t(X) %*% X)
+#Eb = Vb %*% t(X) %*% y
+
+#E = matrix(rnorm(nreps * p, 0 , sqrt(s2)),nreps,p)
+#beta = t( t(E %*% chol(Vb)) + c(Eb))
+#colnames(beta)[1] = "intercept"
+sigma2.0
+
+# Confidence intervals.  This should be shrunk thoug
+apply(beta,2,quantile,c(.025,.975))
+# Prob that var is included
+apply(Z,2,mean)
+# HIghest probability models
+
+# Now, I need to find the actual betas.
+beta0.inc = beta[Z[,1] ==1,1]
+beta1.inc = beta[Z[,2] ==1,2]
+beta2.inc = beta[Z[,3] == 1, 3]
+beta3.inc = beta[Z[,4] == 1, 4]
+beta4.inc = beta[Z[,5] == 1, 5]
+beta5.inc = beta[Z[,6] == 1, 6]
+beta6.inc = beta[Z[,7] == 1, 7]
+
+#Intercept
+quantile(beta0.inc,c(.025,.975))
+# Npreg
+quantile(beta1.inc,c(.025,.975))
+# Bp
+quantile(beta2.inc,c(.025,.975))
+# Skin
+quantile(beta3.inc,c(.025,.975))
+# bmi
+quantile(beta4.inc,c(.025,.975))
+# ped
+quantile(beta5.inc,c(.025,.975))
+# age
+quantile(beta6.inc,c(.025,.975))
+
+# Highest Probability Models
+Z.frame = as.data.frame(Z)
+count(Z.frame, vars = c("V1","V2","V3","V4","V5","V6","V7"))
+count(df, vars = c("x1", "x2", "x3"))
+counts = Z.frame %>% count(V1,V2,V3,V4,V5,V6,V7)
+counts$prob = counts$n / nreps
+mod.prob = counts$n / nreps
+counts[order(-counts$n),][1:5,]
+
+newdata <- mtcars[order(n),] 
+
+```
+The above shows the highest probability model.
+
+# Exercise 2
+
+In this exercise, I use a different prior.
+```{r, cache = TRUE}
+```
