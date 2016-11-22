@@ -10,13 +10,14 @@ knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2)
 library(MASS)
 library(dplyr)
+library(mvtnorm)
 ```
 
 # Exercise 9.2
 
 ## Part A
 ```{r, cache = TRUE}
-setwd("~/Fall 2016/STA 601/sta601/HW/HW09")
+setwd("C:/Users/Zachary/Desktop/Fall 2016/STA 601/sta601/HW/HW09")
 diab = read.table("azdiabetes.dat", header = TRUE)
 
 # Fit a regression model using g-prior
@@ -48,7 +49,7 @@ apply(beta,2,quantile,c(.025,.975))
 The above shows a $95\%$ posterior credible intervals for $\beta_i$ where $i = 1,...,7$. The first thing that I notice is that that the variables where the credible interval doesn't contain zero are intercept, bmi, ped, and age, which indicates that these might be the most influential variables. 
 
 ## Part B
-```{r}
+```{r, cache = TRUE}
 g = n = nrow(diab)
 nu.0 = 2
 sigma2.0 = 1
@@ -116,12 +117,17 @@ for(i in 1:nreps){
 #E = matrix(rnorm(nreps * p, 0 , sqrt(s2)),nreps,p)
 #beta = t( t(E %*% chol(Vb)) + c(Eb))
 #colnames(beta)[1] = "intercept"
-sigma2.0
+#sigma2.0
 
 # Confidence intervals.  This should be shrunk thoug
 apply(beta,2,quantile,c(.025,.975))
 # Prob that var is included
 apply(Z,2,mean)
+```
+
+The above shows the marginal inclusion probabilities, and it also shows the credible intervals for all of the coefficients, including the intercept.
+
+```{r}
 # HIghest probability models
 
 # Now, I need to find the actual betas.
@@ -147,23 +153,114 @@ quantile(beta4.inc,c(.025,.975))
 quantile(beta5.inc,c(.025,.975))
 # age
 quantile(beta6.inc,c(.025,.975))
+```
+The above shows the values of $\beta_i \mid Z_i = 1$.
 
+```{r}
 # Highest Probability Models
 Z.frame = as.data.frame(Z)
-count(Z.frame, vars = c("V1","V2","V3","V4","V5","V6","V7"))
-count(df, vars = c("x1", "x2", "x3"))
 counts = Z.frame %>% count(V1,V2,V3,V4,V5,V6,V7)
 counts$prob = counts$n / nreps
 mod.prob = counts$n / nreps
 counts[order(-counts$n),][1:5,]
-
-newdata <- mtcars[order(n),] 
-
 ```
-The above shows the highest probability model.
+The above shows the highest probability models.
 
 # Exercise 2
 
-In this exercise, I use a different prior.
+In this exercise, I use a different prior described in George and McCullouch
 ```{r, cache = TRUE}
+n = nrow(diab)
+nreps = 10000
+
+diab = diab[,-8]
+X = scale(diab)
+y = scale(diab$glu)
+X = as.matrix(X[,-c(2)])
+p = ncol(X)
+Xtx =   t(X)%*%X
+
+# Hyperparameters
+nu.0 = 2
+sigma2.0 = 1
+pz = rep(.5,p)
+tau = rep(.03,p)
+c = rep(.5/.03,p)
+R = diag(p)
+R.inv = solve(R)
+
+ols = summary(lm(y~-1+X))
+s2 = ols$sigma^2
+beta = beta.ols = ols$coefficients[,1]
+z = rep(1,p)
+
+# matrices
+BETA = Z = matrix(0,nreps,p)
+S2 = matrix(0,nreps,1)
+
+for(i in 1:nreps){
+  # Sample beta
+  Dg = diag((z*c+(1-z))*tau )
+  Dg.inv = solve(Dg)
+  Ag = solve((1/s2)*Xtx + Dg.inv %*% R.inv %*% Dg.inv)
+  beta = rmvnorm(1,(1/s2)* Ag %*% Xtx %*% beta.ols,Ag)
+  BETA[i,] = beta
+  # Sigma2
+  SSR = sum((y - X %*% t(beta))^2)
+  s2 = 1/rgamma(1,(nu.0 + n) /2, (SSR + nu.0*sigma2.0)/2)
+  S2[i,] = s2
+  # Sample z
+  for(j in sample(1:p)){
+    zp = z
+    zp[j] = 1
+    Dgp = diag((zp*c+(1-zp))*tau)
+    a = dmvnorm(beta,rep(0,p),Dgp %*% R %*% Dgp) * pz[j]
+    zp[j] = 0
+    Dgp = diag((zp*c+(1-zp))*tau)
+    b = dmvnorm(beta,rep(0,p), Dgp %*%R %*% Dgp) * (1-pz[j])
+    r = a / (a+b)
+    z[j] = rbinom(1,1,r)
+  }
+  Z[i,] = z
+}
+
+# Confidence intervals.  This should be shrunk thoug
+apply(BETA,2,quantile,c(.025,.975))
+# Prob that var is included
+apply(Z,2,mean)
 ```
+The above shows the marginal inclusion probabilities and scaled and centered coefficients for the beta.
+
+```{r}
+# Now, I need to find the actual betas.
+BETA1.inc = BETA[Z[,1] ==1,1]
+BETA2.inc = BETA[Z[,2] ==1,2]
+BETA3.inc = BETA[Z[,3] == 1, 3]
+BETA4.inc = BETA[Z[,4] == 1, 4]
+BETA5.inc = BETA[Z[,5] == 1, 5]
+BETA6.inc = BETA[Z[,6] == 1, 6]
+
+# Npreg
+quantile(BETA1.inc,c(.025,.975))
+# Bp
+quantile(BETA2.inc,c(.025,.975))
+# Skin
+quantile(BETA3.inc,c(.025,.975))
+# bmi
+quantile(BETA4.inc,c(.025,.975))
+# ped
+quantile(BETA5.inc,c(.025,.975))
+# age
+quantile(BETA6.inc,c(.025,.975))
+```
+The above shows the posterior credible intervals of the coefficients given that he variable is included in the model.
+
+```{r}
+# Highest Probability Models
+Z.frame = as.data.frame(Z)
+counts = Z.frame %>% count(V1,V2,V3,V4,V5,V6)
+counts$prob = counts$n / nreps
+mod.prob = counts$n / nreps
+counts[order(-counts$n),][1:5,]
+```
+Note that the highest probability model includes bmi, ped, and age.
