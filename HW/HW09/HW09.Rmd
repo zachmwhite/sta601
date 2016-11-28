@@ -264,3 +264,5 @@ mod.prob = counts$n / nreps
 counts[order(-counts$n),][1:5,]
 ```
 Note that the highest probability model includes bmi, ped, and age.
+
+Note that this is very sensitive to $\tau$ and c.  However, it is definitely most sensitive to $\tau$.
